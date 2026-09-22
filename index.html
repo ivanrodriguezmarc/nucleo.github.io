@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NÚCLEO — Escáner de elementos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #05070d;
+    --bg-panel: #0b111d;
+    --bg-panel-2: #0e1626;
+    --line: #1c2740;
+    --cyan: #29f1ff;
+    --cyan-dim: #0f7a86;
+    --violet: #8b6bff;
+    --amber: #ffb020;
+    --green: #33ffb0;
+    --red: #ff4d6d;
+    --text: #e8edf7;
+    --text-dim: #7f8caa;
+    --radius: 14px;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top: env(safe-area-inset-top, 0px);}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding: 28px 16px;
+    position:relative;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 42px 42px;
+    opacity:.35;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 20%, black 40%, transparent 100%);
+    pointer-events:none;
+  }
+  body::after{
+    content:"";
+    position:fixed; inset:0;
+    background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(41,241,255,.10), transparent 60%),
+                radial-gradient(ellipse 50% 30% at 100% 100%, rgba(139,107,255,.10), transparent 60%);
+    pointer-events:none;
+  }
+
+  .app{ position:relative; width:100%; max-width: 620px; }
+
+  .frame{
+    position:relative;
+    background: linear-gradient(180deg, var(--bg-panel), var(--bg-panel-2));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px 20px 24px;
+    box-shadow: 0 0 0 1px rgba(41,241,255,.03), 0 20px 60px -20px rgba(0,0,0,.7);
+  }
+  .frame::before, .frame::after, .corner-br, .corner-bl{
+    content:""; position:absolute; width:18px; height:18px;
+    border: 2px solid var(--cyan); opacity:.6;
+  }
+  .frame::before{ top:-1px; left:-1px; border-right:none; border-bottom:none; border-top-left-radius:6px;}
+  .frame::after{ top:-1px; right:-1px; border-left:none; border-bottom:none; border-top-right-radius:6px;}
+  .corner-bl{ position:absolute; bottom:-1px; left:-1px; border-right:none; border-top:none; border-bottom-left-radius:6px;}
+  .corner-br{ position:absolute; bottom:-1px; right:-1px; border-left:none; border-top:none; border-bottom-right-radius:6px;}
+
+  .header{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-bottom:14px; padding-bottom:14px; border-bottom: 1px solid var(--line);
+  }
+  .brand{ font-family:'Space Mono', monospace; font-size: 13px; letter-spacing: .1em; color: var(--cyan); }
+  .brand b{color:var(--text); font-weight:700;}
+  .brand .title-tag{ color: var(--text-dim); font-size:10px; margin-left:6px; }
+  .wallet{
+    display:flex; align-items:center; gap:6px;
+    font-family:'Space Mono', monospace;
+    font-size: 13px; font-weight:700; color: var(--amber);
+    background: rgba(255,176,32,.08);
+    border: 1px solid rgba(255,176,32,.35);
+    padding: 6px 10px; border-radius: 8px;
+    white-space:nowrap;
+  }
+
+  .nav{ display:grid; grid-template-columns: repeat(3,1fr); gap:6px; margin-bottom:18px; }
+  .nav-btn{
+    background: rgba(255,255,255,.02); border: 1px solid var(--line); color: var(--text-dim);
+    font-family:'Space Mono', monospace; font-size: 11px; letter-spacing:.06em; font-weight:700;
+    padding: 10px 4px; border-radius: 8px; cursor:pointer; transition: all .15s ease;
+  }
+  .nav-btn:hover{ border-color: var(--cyan-dim); color: var(--text); }
+  .nav-btn.active{ background: rgba(41,241,255,.08); border-color: var(--cyan); color: var(--cyan); box-shadow: inset 0 0 12px rgba(41,241,255,.12); }
+
+  .view{ display:none; }
+  .view.visible{ display:block; }
+
+  /* ---- mode tabs (quiz start) ---- */
+  .modes{ display:grid; grid-template-columns: repeat(2, 1fr); gap:6px; margin-bottom:14px; }
+  .mode-btn{
+    background: rgba(255,255,255,.02); border: 1px solid var(--line); color: var(--text-dim);
+    font-family:'Outfit', sans-serif; font-size: 12px; font-weight:600; padding: 9px 4px;
+    border-radius: 8px; cursor:pointer; transition: all .15s ease; line-height:1.25;
+  }
+  .mode-btn:hover:not(:disabled){ border-color: var(--cyan-dim); color: var(--text); }
+  .mode-btn.active{ background: rgba(41,241,255,.08); border-color: var(--cyan); color: var(--cyan); box-shadow: inset 0 0 12px rgba(41,241,255,.12); }
+  .mode-btn:disabled{ opacity:.3; cursor:not-allowed; }
+  .mode-btn .lock{ font-size:10px; color: var(--text-dim); }
+
+  .screen{ display:none; }
+  .screen.visible{ display:block; }
+
+  .start-title{ font-family:'Outfit', sans-serif; font-weight:800; font-size: clamp(20px, 5.5vw, 26px); line-height:1.15; margin: 4px 0 10px; }
+  .start-desc{ color: var(--text-dim); font-size: 13px; line-height:1.55; margin-bottom: 14px; }
+  .mode-desc{
+    background: rgba(255,255,255,.02); border: 1px solid var(--line); border-left: 2px solid var(--cyan);
+    border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--text-dim); margin-bottom: 14px; min-height: 40px;
+  }
+  .mode-desc b{ color: var(--text); }
+
+  .toggles{ display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background: rgba(255,255,255,.02); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  }
+  .toggle-row .t-label{ font-size:13px; font-weight:600; }
+  .toggle-row .t-desc{ font-size:11px; color: var(--text-dim); margin-top:2px; }
+  .switch{ position:relative; width:40px; height:22px; flex:0 0 auto; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider{ position:absolute; inset:0; background: var(--line); border-radius:22px; cursor:pointer; transition:.2s; }
+  .slider::before{ content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background: var(--text-dim); border-radius:50%; transition:.2s; }
+  .switch input:checked + .slider{ background: rgba(41,241,255,.25); }
+  .switch input:checked + .slider::before{ transform: translateX(18px); background: var(--cyan); }
+
+  .btn-primary{
+    width:100%; background: var(--cyan); color: #04121a; border:none; font-family:'Outfit', sans-serif;
+    font-weight:700; font-size: 15px; padding: 14px; border-radius: 10px; cursor:pointer;
+    box-shadow: 0 0 24px rgba(41,241,255,.25); transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn-primary:hover{ box-shadow: 0 0 30px rgba(41,241,255,.4); transform: translateY(-1px); }
+  .btn-primary:active{ transform: translateY(0px); }
+  .btn-primary:disabled{ opacity:.35; cursor:not-allowed; box-shadow:none; transform:none; }
+
+  .best-score{ text-align:center; margin-top:14px; font-family:'Space Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .best-score span{ color: var(--amber); }
+
+  .progress-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-family:'Space Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .current-mode-tag{ color: var(--violet); border: 1px solid var(--violet); padding: 3px 8px; border-radius: 5px; font-size:10px; }
+
+  .hud{ display:flex; gap:10px; margin-bottom:18px; }
+  .hud-item{ flex:1; background: rgba(255,255,255,.02); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; text-align:center; }
+  .hud-label{ font-size: 10px; color: var(--text-dim); font-family:'Space Mono', monospace; letter-spacing:.08em; }
+  .hud-value{ font-family:'Space Mono', monospace; font-size: 18px; font-weight:700; color: var(--text); margin-top:2px; }
+  .lives{ display:flex; gap:5px; justify-content:center; margin-top:5px; }
+  .life-cell{ width:16px; height:16px; border: 2px solid var(--amber); transform: rotate(45deg); transition: all .25s ease; }
+  .life-cell.lost{ border-color: var(--line); background: transparent; opacity:.35; }
+  .life-cell.full{ background: var(--amber); box-shadow:0 0 8px rgba(255,176,32,.6);}
+
+  .timer-bar-wrap{ height:4px; background: var(--line); border-radius:4px; margin-bottom:14px; overflow:hidden; display:none; }
+  .timer-bar-wrap.on{ display:block; }
+  .timer-bar{ height:100%; background: var(--amber); width:100%; transition: width 1s linear, background .3s; }
+
+  .specimen{
+    background: radial-gradient(circle at 50% 30%, rgba(41,241,255,.06), transparent 70%);
+    border: 1px solid var(--line); border-radius: 12px; padding: 30px 16px 24px; text-align:center; margin-bottom: 20px; position:relative;
+  }
+  .specimen-label{ font-family:'Space Mono', monospace; font-size: 10px; letter-spacing:.15em; color: var(--text-dim); margin-bottom: 12px; }
+  .specimen-main{ font-family:'Space Mono', monospace; font-weight:700; font-size: clamp(46px, 16vw, 68px); color: var(--cyan); text-shadow: 0 0 28px rgba(41,241,255,.45); line-height:1; }
+  .specimen-sub{ margin-top:10px; font-size: clamp(16px, 5vw, 20px); font-weight:600; color: var(--text); }
+  .specimen-atomic{ position:absolute; top:12px; left:16px; font-family:'Space Mono', monospace; font-size: 11px; color: var(--text-dim); }
+
+  .answer-input{
+    width:100%; background: rgba(255,255,255,.03); border: 1px solid var(--line); color: var(--text);
+    font-family:'Space Mono', monospace; font-size: 17px; padding: 14px 16px; border-radius: 10px; outline:none;
+    margin-bottom: 12px; transition: border-color .15s ease; text-align:center;
+  }
+  .answer-input:focus{ border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(41,241,255,.12); }
+  .answer-input.correct{ border-color: var(--green); }
+  .answer-input.wrong{ border-color: var(--red); }
+
+  .options-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 12px; }
+  .opt-btn{
+    background: rgba(255,255,255,.02); border: 1px solid var(--line); color: var(--text);
+    font-family:'Space Mono', monospace; font-size: 20px; font-weight:700; padding: 16px 8px; border-radius: 10px; cursor:pointer; transition: all .12s ease;
+  }
+  .opt-btn:hover:not(:disabled){ border-color: var(--cyan-dim); background: rgba(41,241,255,.04); }
+  .opt-btn:disabled{ cursor:default; }
+  .opt-btn.correct{ border-color: var(--green); background: rgba(51,255,176,.08); color: var(--green); }
+  .opt-btn.wrong{ border-color: var(--red); background: rgba(255,77,109,.08); color: var(--red); }
+  .opt-btn.dim{ opacity:.35; }
+
+  .feedback{ min-height: 20px; text-align:center; font-size: 13px; margin-bottom: 12px; font-weight:600; }
+  .feedback.ok{ color: var(--green); }
+  .feedback.bad{ color: var(--red); }
+  .coin-pop{ color: var(--amber); font-family:'Space Mono', monospace; }
+
+  .btn-row{ display:flex; gap:10px; }
+  .btn-secondary{
+    flex:1; background: transparent; border: 1px solid var(--line); color: var(--text-dim);
+    font-family:'Outfit', sans-serif; font-weight:600; font-size: 14px; padding: 12px; border-radius: 10px; cursor:pointer;
+  }
+  .btn-secondary:hover{ border-color: var(--text-dim); color: var(--text); }
+
+  .over-title{ font-family:'Outfit', sans-serif; font-weight:800; font-size: 24px; text-align:center; margin: 6px 0 4px; }
+  .over-sub{ text-align:center; color: var(--text-dim); font-size: 13px; margin-bottom: 18px; }
+  .stats-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 20px; }
+  .stat-box{ background: rgba(255,255,255,.02); border: 1px solid var(--line); border-radius: 10px; padding: 10px 4px; text-align:center; }
+  .stat-box .v{ font-family:'Space Mono', monospace; font-size: 17px; font-weight:700; color: var(--cyan); }
+  .stat-box.hi .v{ color: var(--amber); }
+  .stat-box .l{ font-size: 9px; color: var(--text-dim); margin-top:3px; letter-spacing:.03em; }
+
+  /* ---- periodic table view ---- */
+  .table-scroll{ overflow-x:auto; padding-bottom:10px; margin-bottom:14px; }
+  .ptable{ display:grid; grid-template-columns: repeat(18, 30px); grid-auto-rows: 30px; gap:3px; width:max-content; }
+  .ptable.f-block{ margin-top:8px; }
+  .pcell{
+    border-radius:4px; border:1px solid var(--line); background: rgba(255,255,255,.02);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    font-family:'Space Mono', monospace; font-weight:700; font-size:11px; color: var(--text);
+    position:relative; transition: transform .1s ease, box-shadow .1s ease;
+  }
+  .pcell:hover{ transform: scale(1.15); z-index:2; box-shadow: 0 0 10px rgba(0,0,0,.5); }
+  .pcell.selected{ outline: 2px solid var(--cyan); z-index:3; }
+  .legend{ display:flex; flex-wrap:wrap; gap:6px 12px; margin-bottom:16px; }
+  .legend-item{ display:flex; align-items:center; gap:5px; font-size:10px; color: var(--text-dim); }
+  .legend-swatch{ width:9px; height:9px; border-radius:2px; flex:0 0 auto; }
+
+  .detail-panel{
+    background: rgba(255,255,255,.02); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-height:90px;
+  }
+  .detail-empty{ color: var(--text-dim); font-size:13px; text-align:center; padding: 14px 0; }
+  .detail-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:8px; }
+  .detail-sym{ font-family:'Space Mono', monospace; font-weight:700; font-size:30px; }
+  .detail-name{ font-size:16px; font-weight:700; }
+  .detail-z{ font-family:'Space Mono', monospace; font-size:11px; color: var(--text-dim); margin-left:auto; }
+  .detail-cat{ display:inline-block; font-size:10px; padding:3px 8px; border-radius:5px; margin-bottom:10px; font-weight:700; }
+  .detail-ox{ font-size:12px; color: var(--text-dim); }
+  .detail-ox b{ color: var(--text); font-family:'Space Mono', monospace; }
+
+  /* ---- shop ---- */
+  .shop-section-title{ font-family:'Space Mono', monospace; font-size: 11px; letter-spacing:.1em; color: var(--text-dim); margin: 18px 0 10px; }
+  .shop-section-title:first-child{ margin-top:0; }
+  .shop-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .shop-card{
+    background: rgba(255,255,255,.02); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display:flex; flex-direction:column; gap:8px;
+  }
+  .shop-card .swatch{ width:100%; height:26px; border-radius:6px; }
+  .shop-card .name{ font-size:13px; font-weight:700; }
+  .shop-card .desc{ font-size:11px; color: var(--text-dim); line-height:1.4; flex:1; }
+  .shop-buy{
+    border:none; border-radius:8px; padding:8px; font-family:'Space Mono', monospace; font-size:12px; font-weight:700; cursor:pointer;
+    background: var(--cyan); color:#04121a;
+  }
+  .shop-buy:disabled{ background: var(--line); color: var(--text-dim); cursor:not-allowed; }
+  .shop-buy.owned{ background: rgba(51,255,176,.12); color: var(--green); border:1px solid var(--green); cursor:pointer; }
+  .shop-buy.equipped{ background: var(--green); color:#04160f; }
+  .wallet-note{ text-align:center; color: var(--text-dim); font-size:11px; margin-top:16px; font-family:'Space Mono', monospace; }
+
+  @media (prefers-reduced-motion: no-preference){
+    .shake{ animation: shake .35s ease; }
+    @keyframes shake{ 0%,100%{ transform: translateX(0);} 20%{transform: translateX(-6px);} 40%{transform: translateX(6px);} 60%{transform: translateX(-4px);} 80%{transform: translateX(4px);} }
+  }
+  :focus-visible{ outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+  @media (max-width:420px){
+    .stats-grid{ grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="frame">
+    <span class="corner-bl"></span><span class="corner-br"></span>
+    <div class="header">
+      <div class="brand"><b>NÚCLEO</b><span class="title-tag" id="titleTag"></span></div>
+      <div class="wallet">⬡ <span id="walletVal">0</span></div>
+    </div>
+
+    <div class="nav">
+      <button class="nav-btn active" data-view="quiz">ESCÁNER</button>
+      <button class="nav-btn" data-view="table">TABLA</button>
+      <button class="nav-btn" data-view="shop">TIENDA</button>
+    </div>
+
+    <!-- ===================== QUIZ VIEW ===================== -->
+    <div class="view visible" id="view-quiz">
+
+      <div class="screen visible" id="startScreen">
+        <div class="start-title">Identifica el elemento antes de que se acabe el aire.</div>
+        <div class="start-desc">Cada acierto te da Núcleos ⬡. Gástalos en la tienda.</div>
+
+        <div class="modes" id="startModes">
+          <button class="mode-btn active" data-mode="mix">MIXTO</button>
+          <button class="mode-btn" data-mode="s2n">SÍMBOLO → NOMBRE</button>
+          <button class="mode-btn" data-mode="n2s">NOMBRE → SÍMBOLO</button>
+          <button class="mode-btn" data-mode="ox">Nº DE OXIDACIÓN</button>
+          <button class="mode-btn" data-mode="review" id="reviewModeBtn" style="grid-column: span 2;" disabled>REPASO DE FALLOS <span class="lock">🔒 tienda</span></button>
+        </div>
+
+        <div class="mode-desc" id="modeDesc"><b>Mixto —</b> combina los tres modos clásicos en cada pregunta.</div>
+
+        <div class="toggles" id="unlockToggles"></div>
+
+        <button class="btn-primary" id="startBtn">Iniciar análisis</button>
+        <div class="best-score" id="bestScoreLine"></div>
+      </div>
+
+      <div class="screen" id="quizScreen">
+        <div class="hud">
+          <div class="hud-item"><div class="hud-label">PUNTOS</div><div class="hud-value" id="scoreVal">0</div></div>
+          <div class="hud-item"><div class="hud-label">RACHA</div><div class="hud-value" id="streakVal">0</div></div>
+          <div class="hud-item"><div class="hud-label">VIDAS</div><div class="lives" id="livesRow"></div></div>
+        </div>
+
+        <div class="progress-row">
+          <span id="questionCount">PREGUNTA 1</span>
+          <span class="current-mode-tag" id="currentModeTag">MIXTO</span>
+        </div>
+
+        <div class="timer-bar-wrap" id="timerWrap"><div class="timer-bar" id="timerBar"></div></div>
+
+        <div class="specimen">
+          <div class="specimen-atomic" id="specimenAtomic">Z=1</div>
+          <div class="specimen-label" id="specimenLabel">SÍMBOLO DETECTADO</div>
+          <div class="specimen-main" id="specimenMain">H</div>
+          <div class="specimen-sub" id="specimenSub"></div>
+        </div>
+
+        <div id="answerZone"></div>
+        <div class="feedback" id="feedback"></div>
+        <div class="btn-row" id="btnRow">
+          <button class="btn-secondary" id="quitBtn">Abandonar</button>
+          <button class="btn-primary" id="checkBtn" style="display:none;">Comprobar</button>
+          <button class="btn-primary" id="nextBtn" style="display:none;">Siguiente →</button>
+        </div>
+      </div>
+
+      <div class="screen" id="overScreen">
+        <div class="over-title">Escáner desconectado</div>
+        <div class="over-sub" id="overReason">Sin vidas restantes.</div>
+        <div class="stats-grid">
+          <div class="stat-box"><div class="v" id="overScore">0</div><div class="l">PUNTOS</div></div>
+          <div class="stat-box hi"><div class="v" id="overStreak">0</div><div class="l">MEJOR RACHA</div></div>
+          <div class="stat-box"><div class="v" id="overAcc">0%</div><div class="l">PRECISIÓN</div></div>
+          <div class="stat-box hi"><div class="v" id="overCoins">+0</div><div class="l">NÚCLEOS</div></div>
+        </div>
+        <button class="btn-primary" id="retryBtn">Nuevo análisis</button>
+      </div>
+
+    </div>
+
+    <!-- ===================== TABLE VIEW ===================== -->
+    <div class="view" id="view-table">
+      <div class="start-desc" style="margin-bottom:14px;">Toca cualquier elemento para ver su ficha completa.</div>
+      <div class="table-scroll">
+        <div class="ptable" id="ptableMain"></div>
+        <div class="ptable f-block" id="ptableF"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="detail-panel" id="detailPanel">
+        <div class="detail-empty">Selecciona un elemento en la tabla ↑</div>
+      </div>
+    </div>
+
+    <!-- ===================== SHOP VIEW ===================== -->
+    <div class="view" id="view-shop">
+      <div class="start-desc" style="margin-bottom:6px;">Gasta tus Núcleos ⬡ en mejoras cosméticas y modos nuevos.</div>
+
+      <div class="shop-section-title">TEMAS DE COLOR</div>
+      <div class="shop-grid" id="shopThemes"></div>
+
+      <div class="shop-section-title">TÍTULOS</div>
+      <div class="shop-grid" id="shopTitles"></div>
+
+      <div class="shop-section-title">MODOS Y MEJORAS</div>
+      <div class="shop-grid" id="shopUnlocks"></div>
+
+      <div class="wallet-note">Ganas Núcleos acertando preguntas en el Escáner. Cuanta más racha, más ganas.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ================= ELEMENT DATA (118) =================
+  // row/col = position in the 18-column periodic table (f-block offset to rows 8-9)
+  var RAW = [
+    [1,"H","Hidrógeno",1,1,[1,-1]],[2,"He","Helio",1,18,[0]],
+    [3,"Li","Litio",2,1,[1]],[4,"Be","Berilio",2,2,[2]],[5,"B","Boro",2,13,[3]],[6,"C","Carbono",2,14,[4,2,-4]],
+    [7,"N","Nitrógeno",2,15,[5,3,-3]],[8,"O","Oxígeno",2,16,[-2]],[9,"F","Flúor",2,17,[-1]],[10,"Ne","Neón",2,18,[0]],
+    [11,"Na","Sodio",3,1,[1]],[12,"Mg","Magnesio",3,2,[2]],[13,"Al","Aluminio",3,13,[3]],[14,"Si","Silicio",3,14,[4,-4]],
+    [15,"P","Fósforo",3,15,[5,3,-3]],[16,"S","Azufre",3,16,[6,4,-2]],[17,"Cl","Cloro",3,17,[7,5,3,1,-1]],[18,"Ar","Argón",3,18,[0]],
+    [19,"K","Potasio",4,1,[1]],[20,"Ca","Calcio",4,2,[2]],[21,"Sc","Escandio",4,3,[3]],[22,"Ti","Titanio",4,4,[4,3,2]],
+    [23,"V","Vanadio",4,5,[5,4,3,2]],[24,"Cr","Cromo",4,6,[6,3,2]],[25,"Mn","Manganeso",4,7,[7,6,4,3,2]],[26,"Fe","Hierro",4,8,[3,2]],
+    [27,"Co","Cobalto",4,9,[3,2]],[28,"Ni","Níquel",4,10,[2,3]],[29,"Cu","Cobre",4,11,[2,1]],[30,"Zn","Zinc",4,12,[2]],
+    [31,"Ga","Galio",4,13,[3]],[32,"Ge","Germanio",4,14,[4,2]],[33,"As","Arsénico",4,15,[5,3,-3]],[34,"Se","Selenio",4,16,[6,4,-2]],
+    [35,"Br","Bromo",4,17,[7,5,1,-1]],[36,"Kr","Kriptón",4,18,[0]],
+    [37,"Rb","Rubidio",5,1,[1]],[38,"Sr","Estroncio",5,2,[2]],[39,"Y","Itrio",5,3,[3]],[40,"Zr","Circonio",5,4,[4]],
+    [41,"Nb","Niobio",5,5,[5]],[42,"Mo","Molibdeno",5,6,[6,4,3]],[43,"Tc","Tecnecio",5,7,[7,4]],[44,"Ru","Rutenio",5,8,[4,3]],
+    [45,"Rh","Rodio",5,9,[3]],[46,"Pd","Paladio",5,10,[2,4]],[47,"Ag","Plata",5,11,[1]],[48,"Cd","Cadmio",5,12,[2]],
+    [49,"In","Indio",5,13,[3]],[50,"Sn","Estaño",5,14,[4,2]],[51,"Sb","Antimonio",5,15,[5,3,-3]],[52,"Te","Teluro",5,16,[6,4,-2]],
+    [53,"I","Yodo",5,17,[7,5,1,-1]],[54,"Xe","Xenón",5,18,[0]],
+    [55,"Cs","Cesio",6,1,[1]],[56,"Ba","Bario",6,2,[2]],[57,"La","Lantano",6,3,[3]],[72,"Hf","Hafnio",6,4,[4]],
+    [73,"Ta","Tántalo",6,5,[5]],[74,"W","Wolframio",6,6,[6,4]],[75,"Re","Renio",6,7,[7]],[76,"Os","Osmio",6,8,[4,3]],
+    [77,"Ir","Iridio",6,9,[3,4]],[78,"Pt","Platino",6,10,[4,2]],[79,"Au","Oro",6,11,[3,1]],[80,"Hg","Mercurio",6,12,[2,1]],
+    [81,"Tl","Talio",6,13,[3,1]],[82,"Pb","Plomo",6,14,[4,2]],[83,"Bi","Bismuto",6,15,[5,3]],[84,"Po","Polonio",6,16,[4,2]],
+    [85,"At","Astato",6,17,[-1,1]],[86,"Rn","Radón",6,18,[0]],
+    [87,"Fr","Francio",7,1,[1]],[88,"Ra","Radio",7,2,[2]],[89,"Ac","Actinio",7,3,[3]],[104,"Rf","Rutherfordio",7,4,[]],
+    [105,"Db","Dubnio",7,5,[]],[106,"Sg","Seaborgio",7,6,[]],[107,"Bh","Bohrio",7,7,[]],[108,"Hs","Hasio",7,8,[]],
+    [109,"Mt","Meitnerio",7,9,[]],[110,"Ds","Darmstadtio",7,10,[]],[111,"Rg","Roentgenio",7,11,[]],[112,"Cn","Copernicio",7,12,[]],
+    [113,"Nh","Nihonio",7,13,[]],[114,"Fl","Flerovio",7,14,[]],[115,"Mc","Moscovio",7,15,[]],[116,"Lv","Livermorio",7,16,[]],
+    [117,"Ts","Teneso",7,17,[]],[118,"Og","Oganesón",7,18,[0]],
+    [58,"Ce","Cerio",8,4,[3,4]],[59,"Pr","Praseodimio",8,5,[3]],[60,"Nd","Neodimio",8,6,[3]],[61,"Pm","Prometio",8,7,[3]],
+    [62,"Sm","Samario",8,8,[3,2]],[63,"Eu","Europio",8,9,[3,2]],[64,"Gd","Gadolinio",8,10,[3]],[65,"Tb","Terbio",8,11,[3]],
+    [66,"Dy","Disprosio",8,12,[3]],[67,"Ho","Holmio",8,13,[3]],[68,"Er","Erbio",8,14,[3]],[69,"Tm","Tulio",8,15,[3]],
+    [70,"Yb","Iterbio",8,16,[3,2]],[71,"Lu","Lutecio",8,17,[3]],
+    [90,"Th","Torio",9,4,[4]],[91,"Pa","Protactinio",9,5,[5]],[92,"U","Uranio",9,6,[6,4]],[93,"Np","Neptunio",9,7,[5,6]],
+    [94,"Pu","Plutonio",9,8,[4,6]],[95,"Am","Americio",9,9,[3]],[96,"Cm","Curio",9,10,[3]],[97,"Bk","Berkelio",9,11,[3]],
+    [98,"Cf","Californio",9,12,[3]],[99,"Es","Einstenio",9,13,[3]],[100,"Fm","Fermio",9,14,[3]],[101,"Md","Mendelevio",9,15,[3]],
+    [102,"No","Nobelio",9,16,[2,3]],[103,"Lr","Lawrencio",9,17,[3]]
+  ];
+  var ELEMENTS = RAW.map(function(r){ return {z:r[0], s:r[1], n:r[2], row:r[3], col:r[4], ox:r[5]}; });
+  ELEMENTS.sort(function(a,b){ return a.z-b.z; });
+
+  function isCore(z){
+    if(z===43) return false;
+    if(z>=58 && z<=71) return false;
+    if(z>83) return z===92;
+    return true;
+  }
+  var CORE_ELEMENTS = ELEMENTS.filter(function(e){ return isCore(e.z); });
+  var OX_ELEMENTS = ELEMENTS.filter(function(e){ return e.ox && e.ox.length>0 && !(e.ox.length===1 && e.ox[0]===0); });
+  var OX_POOL = [-4,-3,-2,-1,1,2,3,4,5,6,7];
+
+  var METALLOIDS = ["B","Si","Ge","As","Sb","Te","Po"];
+  var POST_TRANS = ["Al","Ga","In","Sn","Tl","Pb","Bi","Nh","Fl","Mc","Lv"];
+  var CATS = {
+    alcalino:{label:"Metal alcalino",color:"#ff5470"},
+    alcalinoterreo:{label:"Metal alcalinotérreo",color:"#ffa94d"},
+    transicion:{label:"Metal de transición",color:"#ffd93f"},
+    lantanido:{label:"Lantánido",color:"#ff8fd0"},
+    actinido:{label:"Actínido",color:"#ff5c5c"},
+    posttransicion:{label:"Metal post-transición",color:"#5ce1e6"},
+    metaloide:{label:"Metaloide",color:"#b28dff"},
+    nometal:{label:"No metal",color:"#4dff9e"},
+    halogeno:{label:"Halógeno",color:"#29f1ff"},
+    noble:{label:"Gas noble",color:"#c9a6ff"}
+  };
+  function getCat(el){
+    if(el.z>=58 && el.z<=71) return "lantanido";
+    if(el.z>=90 && el.z<=103) return "actinido";
+    if(el.z===57) return "lantanido";
+    if(el.z===89) return "actinido";
+    if(el.z===1) return "nometal";
+    if(el.col===1) return "alcalino";
+    if(el.col===2) return "alcalinoterreo";
+    if(el.col>=3 && el.col<=12) return "transicion";
+    if(el.col===17) return "halogeno";
+    if(el.col===18) return "noble";
+    if(METALLOIDS.indexOf(el.s)>=0) return "metaloide";
+    if(POST_TRANS.indexOf(el.s)>=0) return "posttransicion";
+    return "nometal";
+  }
+
+  var MODE_INFO = {
+    mix: {tag:"MIXTO", desc:"<b>Mixto —</b> combina los tres modos clásicos en cada pregunta."},
+    s2n: {tag:"SÍMBOLO", desc:"<b>Símbolo → Nombre —</b> ves el símbolo, escribes el nombre en español."},
+    n2s: {tag:"NOMBRE", desc:"<b>Nombre → Símbolo —</b> ves el nombre, escribes el símbolo exacto."},
+    ox:  {tag:"OXIDACIÓN", desc:"<b>Nº de oxidación —</b> eliges, entre 4 opciones, un estado real del elemento."},
+    review: {tag:"REPASO", desc:"<b>Repaso de fallos —</b> solo pregunta sobre los elementos que más se te resisten."}
+  };
+
+  // ================= PROFILE (persistent) =================
+  var THEMES = [
+    {id:"cyan",name:"Cian reactor",color:"#29f1ff",price:0},
+    {id:"violet",name:"Violeta cuántico",color:"#8b6bff",price:150},
+    {id:"amber",name:"Ámbar peligro",color:"#ffb020",price:150},
+    {id:"green",name:"Verde bioluminiscente",color:"#33ffb0",price:150},
+    {id:"pink",name:"Mercurio rosa",color:"#ff5ec7",price:200}
+  ];
+  var TITLES = [
+    {id:"novato",name:"Novato",price:0},
+    {id:"investigador",name:"Investigador/a",price:120},
+    {id:"doctor",name:"Doctor/a en Química",price:300},
+    {id:"leyenda",name:"Leyenda del Núcleo",price:600}
+  ];
+  var UNLOCKS = [
+    {id:"timer",name:"Modo contrarreloj",desc:"12s por pregunta. Más presión, más puntos por racha.",price:250},
+    {id:"review",name:"Repaso de fallos",desc:"Desbloquea un modo que solo pregunta tus elementos más fallados.",price:250},
+    {id:"expert",name:"Modo experto (118)",desc:"Incluye elementos sintéticos y superpesados en símbolo/nombre.",price:300}
+  ];
+
+  var DEFAULT_PROFILE = { nucleos:0, ownedThemes:["cyan"], ownedTitles:["novato"], ownedUnlocks:[], eqTheme:"cyan", eqTitle:"novato", bestScore:0, missed:[] };
+  var profile = loadProfile();
+
+  function loadProfile(){
+    try{
+      var raw = localStorage.getItem("nucleo_profile_v2");
+      if(raw){
+        var p = JSON.parse(raw);
+        return Object.assign({}, DEFAULT_PROFILE, p);
+      }
+    }catch(e){}
+    return Object.assign({}, DEFAULT_PROFILE);
+  }
+  function saveProfile(){ try{ localStorage.setItem("nucleo_profile_v2", JSON.stringify(profile)); }catch(e){} }
+
+  function applyTheme(){
+    var t = THEMES.find(function(x){ return x.id===profile.eqTheme; }) || THEMES[0];
+    document.documentElement.style.setProperty("--cyan", t.color);
+  }
+  function applyTitle(){
+    var t = TITLES.find(function(x){ return x.id===profile.eqTitle; }) || TITLES[0];
+    document.getElementById("titleTag").textContent = "· " + t.name;
+  }
+  function renderWallet(){ document.getElementById("walletVal").textContent = profile.nucleos; }
+  function addNucleos(n){ profile.nucleos += n; saveProfile(); renderWallet(); }
+
+  // ================= NAV =================
+  var navButtons = document.querySelectorAll(".nav-btn");
+  navButtons.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      navButtons.forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("visible"); });
+      document.getElementById("view-"+btn.dataset.view).classList.add("visible");
+      if(btn.dataset.view === "table") renderTable();
+      if(btn.dataset.view === "shop") renderShop();
+    });
+  });
+
+  // ================= QUIZ STATE =================
+  var state = {
+    mode:"mix", score:0, streak:0, bestStreak:0, lives:3, qNum:0,
+    correctCount:0, totalCount:0, current:null, qType:null, awaitingNext:false,
+    runCoins:0, timerOn:false, expertOn:false, timerInterval:null, timeLeft:12
+  };
+
+  function stripAccents(str){ return str.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+  function norm(str){ return stripAccents(String(str||"")).toLowerCase().trim().replace(/\s+/g," "); }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function fmtOx(v){ return v>0 ? "+"+v : String(v); }
+
+  var startScreen = document.getElementById("startScreen");
+  var quizScreen = document.getElementById("quizScreen");
+  var overScreen = document.getElementById("overScreen");
+
+  var startModes = document.getElementById("startModes");
+  var reviewModeBtn = document.getElementById("reviewModeBtn");
+  var modeDesc = document.getElementById("modeDesc");
+  var unlockToggles = document.getElementById("unlockToggles");
+  var startBtn = document.getElementById("startBtn");
+
+  var scoreVal = document.getElementById("scoreVal");
+  var streakVal = document.getElementById("streakVal");
+  var livesRow = document.getElementById("livesRow");
+  var questionCount = document.getElementById("questionCount");
+  var currentModeTag = document.getElementById("currentModeTag");
+  var timerWrap = document.getElementById("timerWrap");
+  var timerBar = document.getElementById("timerBar");
+
+  var specimenAtomic = document.getElementById("specimenAtomic");
+  var specimenLabel = document.getElementById("specimenLabel");
+  var specimenMain = document.getElementById("specimenMain");
+  var specimenSub = document.getElementById("specimenSub");
+
+  var answerZone = document.getElementById("answerZone");
+  var feedback = document.getElementById("feedback");
+  var checkBtn = document.getElementById("checkBtn");
+  var nextBtn = document.getElementById("nextBtn");
+  var quitBtn = document.getElementById("quitBtn");
+  var retryBtn = document.getElementById("retryBtn");
+
+  var overScore = document.getElementById("overScore");
+  var overStreak = document.getElementById("overStreak");
+  var overAcc = document.getElementById("overAcc");
+  var overCoins = document.getElementById("overCoins");
+  var overReason = document.getElementById("overReason");
+
+  function showScreen(name){
+    [startScreen, quizScreen, overScreen].forEach(function(s){ s.classList.remove("visible"); });
+    if(name==="start") startScreen.classList.add("visible");
+    if(name==="quiz") quizScreen.classList.add("visible");
+    if(name==="over") overScreen.classList.add("visible");
+  }
+
+  function renderStartScreen(){
+    reviewModeBtn.disabled = profile.ownedUnlocks.indexOf("review")===-1;
+    unlockToggles.innerHTML = "";
+    if(profile.ownedUnlocks.indexOf("timer")>=0){
+      unlockToggles.appendChild(buildToggle("timerToggle","⏱ Modo contrarreloj","12 segundos por pregunta.", state.timerOn, function(v){ state.timerOn=v; }));
+    }
+    if(profile.ownedUnlocks.indexOf("expert")>=0){
+      unlockToggles.appendChild(buildToggle("expertToggle","🧬 Modo experto (118)","Incluye elementos sintéticos en símbolo/nombre.", state.expertOn, function(v){ state.expertOn=v; }));
+    }
+    renderBestLine();
+  }
+  function buildToggle(id,label,desc,checked,onChange){
+    var row = document.createElement("div");
+    row.className = "toggle-row";
+    row.innerHTML =
+      '<div><div class="t-label">'+label+'</div><div class="t-desc">'+desc+'</div></div>'+
+      '<label class="switch"><input type="checkbox" id="'+id+'" '+(checked?"checked":"")+'><span class="slider"></span></label>';
+    row.querySelector("input").addEventListener("change", function(e){ onChange(e.target.checked); });
+    return row;
+  }
+
+  function renderBestLine(){
+    var el = document.getElementById("bestScoreLine");
+    el.innerHTML = profile.bestScore>0 ? "Mejor puntuación registrada: <span>"+profile.bestScore+"</span>" : "";
+  }
+
+  startModes.addEventListener("click", function(e){
+    var btn = e.target.closest(".mode-btn");
+    if(!btn || btn.disabled) return;
+    startModes.querySelectorAll(".mode-btn").forEach(function(b){ b.classList.remove("active"); });
+    btn.classList.add("active");
+    state.mode = btn.dataset.mode;
+    modeDesc.innerHTML = MODE_INFO[state.mode].desc;
+  });
+
+  startBtn.addEventListener("click", function(){
+    if(state.mode==="review" && profile.missed.length===0){
+      modeDesc.innerHTML = "<b>Repaso de fallos —</b> aún no tienes fallos registrados. Juega en otro modo primero.";
+      return;
+    }
+    state.score=0; state.streak=0; state.bestStreak=0; state.lives=3; state.qNum=0;
+    state.correctCount=0; state.totalCount=0; state.runCoins=0;
+    renderHud();
+    showScreen("quiz");
+    nextQuestion();
+  });
+
+  retryBtn.addEventListener("click", function(){ showScreen("start"); renderStartScreen(); });
+  quitBtn.addEventListener("click", function(){
+    stopTimer();
+    if(state.score > profile.bestScore){ profile.bestScore = state.score; saveProfile(); }
+    showScreen("start"); renderStartScreen();
+  });
+
+  function renderHud(){
+    scoreVal.textContent = state.score;
+    streakVal.textContent = state.streak;
+    livesRow.innerHTML = "";
+    for(var i=0;i<3;i++){
+      var cell = document.createElement("div");
+      cell.className = "life-cell " + (i < state.lives ? "full" : "lost");
+      livesRow.appendChild(cell);
+    }
+    questionCount.textContent = "PREGUNTA " + state.qNum;
+  }
+
+  function pickQType(){
+    if(state.mode === "mix" || state.mode==="review"){
+      if(state.mode==="review"){
+        var hasOx = getMissedElements().some(function(e){ return e.ox && e.ox.length>0 && !(e.ox.length===1&&e.ox[0]===0); });
+        var opts = hasOx ? ["s2n","n2s","ox"] : ["s2n","n2s"];
+        return pick(opts);
+      }
+      return pick(["s2n","n2s","ox"]);
+    }
+    return state.mode;
+  }
+
+  function getMissedElements(){
+    return ELEMENTS.filter(function(e){ return profile.missed.indexOf(e.s)>=0; });
+  }
+
+  function stopTimer(){
+    if(state.timerInterval){ clearInterval(state.timerInterval); state.timerInterval=null; }
+    timerWrap.classList.remove("on");
+  }
+  function startTimer(){
+    if(!state.timerOn) return;
+    state.timeLeft = 12;
+    timerWrap.classList.add("on");
+    timerBar.style.width = "100%";
+    timerBar.style.background = "var(--amber)";
+    state.timerInterval = setInterval(function(){
+      state.timeLeft--;
+      var pct = Math.max(0, (state.timeLeft/12)*100);
+      timerBar.style.width = pct + "%";
+      if(state.timeLeft<=4) timerBar.style.background = "var(--red)";
+      if(state.timeLeft<=0){
+        clearInterval(state.timerInterval); state.timerInterval=null;
+        if(!state.awaitingNext) timeExpired();
+      }
+    }, 1000);
+  }
+  function timeExpired(){
+    state.awaitingNext = true;
+    state.totalCount++;
+    feedback.classList.add("bad");
+    var correctText = state.qType==="s2n" ? state.current.n : state.qType==="n2s" ? state.current.s : fmtOx(pick(state.current.ox));
+    feedback.textContent = "¡Tiempo agotado! Respuesta: " + correctText;
+    var inp = document.getElementById("textAnswer");
+    if(inp) inp.disabled = true;
+    var grid = document.getElementById("optGrid");
+    if(grid) grid.querySelectorAll(".opt-btn").forEach(function(b){ b.disabled = true; });
+    registerMiss();
+    finishResult(false);
+  }
+
+  function nextQuestion(){
+    stopTimer();
+    state.awaitingNext = false;
+    state.qNum++;
+    var qType = pickQType();
+    state.qType = qType;
+
+    var pool;
+    if(state.mode==="review"){
+      var missedEls = getMissedElements();
+      pool = qType==="ox" ? missedEls.filter(function(e){ return e.ox && e.ox.length>0 && !(e.ox.length===1&&e.ox[0]===0); }) : missedEls;
+    } else if(qType==="ox"){
+      pool = OX_ELEMENTS;
+    } else {
+      pool = state.expertOn ? ELEMENTS : CORE_ELEMENTS;
+    }
+    var el = pick(pool);
+    state.current = el;
+
+    currentModeTag.textContent = MODE_INFO[qType].tag;
+    feedback.textContent = "";
+    feedback.className = "feedback";
+    checkBtn.style.display = "inline-block";
+    nextBtn.style.display = "none";
+    renderHud();
+    specimenMain.style.fontSize = "";
+
+    if(qType === "s2n"){
+      specimenAtomic.textContent = "Z=" + el.z;
+      specimenLabel.textContent = "SÍMBOLO DETECTADO — IDENTIFICA EL NOMBRE";
+      specimenMain.textContent = el.s;
+      specimenSub.textContent = "";
+      answerZone.innerHTML = '<input autocomplete="off" autocapitalize="off" spellcheck="false" class="answer-input" id="textAnswer" placeholder="Escribe el nombre del elemento…">';
+      focusInput();
+    } else if(qType === "n2s"){
+      specimenAtomic.textContent = "Z=" + el.z;
+      specimenLabel.textContent = "ELEMENTO DETECTADO — IDENTIFICA EL SÍMBOLO";
+      specimenMain.textContent = el.n;
+      specimenMain.style.fontSize = "clamp(28px, 8vw, 40px)";
+      specimenSub.textContent = "";
+      answerZone.innerHTML = '<input autocomplete="off" autocapitalize="off" spellcheck="false" class="answer-input" id="textAnswer" placeholder="Escribe el símbolo…">';
+      focusInput();
+    } else {
+      specimenAtomic.textContent = "Z=" + el.z;
+      specimenLabel.textContent = "¿QUÉ Nº DE OXIDACIÓN PRESENTA?";
+      specimenMain.textContent = el.s;
+      specimenSub.textContent = el.n;
+      answerZone.innerHTML = '<div class="options-grid" id="optGrid"></div>';
+      buildOxOptions(el);
+      checkBtn.style.display = "none";
+    }
+    startTimer();
+  }
+
+  function focusInput(){
+    var inp = document.getElementById("textAnswer");
+    if(inp){
+      inp.value = "";
+      setTimeout(function(){ inp.focus(); }, 10);
+      inp.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){
+          if(!state.awaitingNext) checkTextAnswer();
+          else advance();
+        }
+      });
+    }
+  }
+
+  function buildOxOptions(el){
+    var correct = pick(el.ox);
+    var others = OX_POOL.filter(function(v){ return el.ox.indexOf(v) === -1; });
+    others.sort(function(){ return Math.random()-0.5; });
+    var opts = [correct, others[0], others[1], others[2]];
+    opts.sort(function(){ return Math.random()-0.5; });
+    var grid = document.getElementById("optGrid");
+    grid.innerHTML = "";
+    opts.forEach(function(v){
+      var b = document.createElement("button");
+      b.className = "opt-btn";
+      b.textContent = fmtOx(v);
+      b.addEventListener("click", function(){ checkOxAnswer(v, correct, grid); });
+      grid.appendChild(b);
+    });
+  }
+
+  function checkOxAnswer(chosen, correct, grid){
+    if(state.awaitingNext) return;
+    state.awaitingNext = true;
+    stopTimer();
+    state.totalCount++;
+    grid.querySelectorAll(".opt-btn").forEach(function(b){
+      b.disabled = true;
+      var v = parseInt(b.textContent.replace("+",""),10);
+      if(v === correct) b.classList.add("correct");
+      else if(v === chosen) b.classList.add("wrong");
+      else b.classList.add("dim");
+    });
+    if(chosen !== correct) registerMiss();
+    finishResult(chosen === correct);
+  }
+
+  function checkTextAnswer(){
+    if(state.awaitingNext) return;
+    var inp = document.getElementById("textAnswer");
+    var val = norm(inp.value);
+    var target = state.qType === "s2n" ? norm(state.current.n) : norm(state.current.s);
+    var isCorrect = val.length>0 && val === target;
+    state.awaitingNext = true;
+    stopTimer();
+    state.totalCount++;
+    inp.disabled = true;
+    inp.classList.add(isCorrect ? "correct" : "wrong");
+    if(!isCorrect){
+      var correctText = state.qType === "s2n" ? state.current.n : state.current.s;
+      feedback.classList.add("bad");
+      feedback.textContent = "Respuesta correcta: " + correctText;
+      registerMiss();
+    }
+    finishResult(isCorrect);
+  }
+
+  function registerMiss(){
+    if(profile.missed.indexOf(state.current.s)===-1){
+      profile.missed.push(state.current.s);
+      saveProfile();
+    }
+  }
+
+  function finishResult(isCorrect){
+    checkBtn.style.display = "none";
+    nextBtn.style.display = "inline-block";
+    nextBtn.focus();
+    if(isCorrect){
+      state.correctCount++;
+      state.streak++;
+      state.bestStreak = Math.max(state.bestStreak, state.streak);
+      var gained = 10 + state.streak*2;
+      state.score += gained;
+      var coins = 1 + Math.floor(state.streak/5);
+      state.runCoins += coins;
+      addNucleos(coins);
+      feedback.classList.add("ok");
+      feedback.innerHTML = "Correcto +" + gained + (state.streak>=3 ? "  ·  racha x" + state.streak : "") + '  <span class="coin-pop">· +'+coins+' ⬡</span>';
+    } else {
+      state.streak = 0;
+      state.lives--;
+      document.querySelector(".frame").classList.add("shake");
+      setTimeout(function(){ document.querySelector(".frame").classList.remove("shake"); }, 350);
+    }
+    renderHud();
+    if(state.lives <= 0){ setTimeout(endGame, 550); }
+  }
+
+  checkBtn.addEventListener("click", checkTextAnswer);
+  nextBtn.addEventListener("click", advance);
+  function advance(){ if(state.lives <= 0) return; nextQuestion(); }
+
+  function endGame(){
+    stopTimer();
+    if(state.score > profile.bestScore){ profile.bestScore = state.score; saveProfile(); }
+    overScore.textContent = state.score;
+    overStreak.textContent = state.bestStreak;
+    var acc = state.totalCount>0 ? Math.round(100*state.correctCount/state.totalCount) : 0;
+    overAcc.textContent = acc + "%";
+    overCoins.textContent = "+" + state.runCoins;
+    overReason.textContent = "Sin vidas restantes · " + state.qNum + " preguntas analizadas";
+    showScreen("over");
+  }
+
+  // ================= TABLE VIEW =================
+  var tableBuilt = false;
+  function renderTable(){
+    if(tableBuilt) return;
+    tableBuilt = true;
+    var main = document.getElementById("ptableMain");
+    var fblk = document.getElementById("ptableF");
+    ELEMENTS.forEach(function(el){
+      var cell = document.createElement("div");
+      cell.className = "pcell";
+      cell.style.gridColumn = el.col;
+      cell.style.gridRow = (el.row<=7) ? el.row : (el.row-6); // rows 8,9 -> 2,3 in f-block grid
+      cell.style.borderColor = CATS[getCat(el)].color;
+      cell.style.boxShadow = "inset 0 -2px 0 " + CATS[getCat(el)].color;
+      cell.textContent = el.s;
+      cell.title = el.n;
+      cell.addEventListener("click", function(){ selectElement(el, cell); });
+      (el.row<=7 ? main : fblk).appendChild(cell);
+    });
+    var legend = document.getElementById("legend");
+    Object.keys(CATS).forEach(function(k){
+      var item = document.createElement("div");
+      item.className = "legend-item";
+      item.innerHTML = '<span class="legend-swatch" style="background:'+CATS[k].color+'"></span>'+CATS[k].label;
+      legend.appendChild(item);
+    });
+  }
+  var selectedCell = null;
+  function selectElement(el, cell){
+    if(selectedCell) selectedCell.classList.remove("selected");
+    cell.classList.add("selected");
+    selectedCell = cell;
+    var cat = CATS[getCat(el)];
+    var oxText = (el.ox && el.ox.length>0 && !(el.ox.length===1 && el.ox[0]===0))
+      ? el.ox.map(fmtOx).join(", ")
+      : (el.ox && el.ox.length===1 && el.ox[0]===0 ? "0 (gas noble estable)" : "No definidos (elemento sintético / muy inestable)");
+    document.getElementById("detailPanel").innerHTML =
+      '<div class="detail-head"><div class="detail-sym" style="color:'+cat.color+'">'+el.s+'</div><div class="detail-name">'+el.n+'</div><div class="detail-z">Z = '+el.z+'</div></div>'+
+      '<div class="detail-cat" style="background:'+cat.color+'22;color:'+cat.color+';border:1px solid '+cat.color+'55;">'+cat.label+'</div>'+
+      '<div class="detail-ox">Nº de oxidación: <b>'+oxText+'</b></div>';
+  }
+
+  // ================= SHOP =================
+  function renderShop(){
+    var tWrap = document.getElementById("shopThemes"); tWrap.innerHTML = "";
+    THEMES.forEach(function(t){
+      var owned = profile.ownedThemes.indexOf(t.id)>=0;
+      var eq = profile.eqTheme === t.id;
+      var card = document.createElement("div");
+      card.className = "shop-card";
+      card.innerHTML =
+        '<div class="swatch" style="background:'+t.color+'"></div>'+
+        '<div class="name">'+t.name+'</div>'+
+        '<div class="desc">'+(owned ? "Tema desbloqueado." : t.price+" ⬡")+'</div>'+
+        '<button class="shop-buy '+(eq?"equipped":owned?"owned":"")+'">'+(eq?"Equipado":owned?"Equipar":"Comprar")+'</button>';
+      card.querySelector("button").addEventListener("click", function(){
+        if(!owned){
+          if(profile.nucleos < t.price) return flashInsufficient(card);
+          profile.nucleos -= t.price;
+          profile.ownedThemes.push(t.id);
+        }
+        profile.eqTheme = t.id;
+        saveProfile(); renderWallet(); applyTheme(); renderShop();
+      });
+      tWrap.appendChild(card);
+    });
+
+    var tiWrap = document.getElementById("shopTitles"); tiWrap.innerHTML = "";
+    TITLES.forEach(function(t){
+      var owned = profile.ownedTitles.indexOf(t.id)>=0;
+      var eq = profile.eqTitle === t.id;
+      var card = document.createElement("div");
+      card.className = "shop-card";
+      card.innerHTML =
+        '<div class="name">'+t.name+'</div>'+
+        '<div class="desc">'+(owned ? "Título desbloqueado." : t.price+" ⬡")+'</div>'+
+        '<button class="shop-buy '+(eq?"equipped":owned?"owned":"")+'">'+(eq?"Equipado":owned?"Equipar":"Comprar")+'</button>';
+      card.querySelector("button").addEventListener("click", function(){
+        if(!owned){
+          if(profile.nucleos < t.price) return flashInsufficient(card);
+          profile.nucleos -= t.price;
+          profile.ownedTitles.push(t.id);
+        }
+        profile.eqTitle = t.id;
+        saveProfile(); renderWallet(); applyTitle(); renderShop();
+      });
+      tiWrap.appendChild(card);
+    });
+
+    var uWrap = document.getElementById("shopUnlocks"); uWrap.innerHTML = "";
+    UNLOCKS.forEach(function(u){
+      var owned = profile.ownedUnlocks.indexOf(u.id)>=0;
+      var card = document.createElement("div");
+      card.className = "shop-card";
+      card.style.gridColumn = "span 2";
+      card.innerHTML =
+        '<div class="name">'+u.name+'</div>'+
+        '<div class="desc">'+u.desc+(owned?"":" — "+u.price+" ⬡")+'</div>'+
+        '<button class="shop-buy '+(owned?"owned":"")+'" '+(owned?"disabled":"")+'>'+(owned?"Desbloqueado":"Comprar")+'</button>';
+      if(!owned){
+        card.querySelector("button").addEventListener("click", function(){
+          if(profile.nucleos < u.price) return flashInsufficient(card);
+          profile.nucleos -= u.price;
+          profile.ownedUnlocks.push(u.id);
+          saveProfile(); renderWallet(); renderShop(); renderStartScreen();
+        });
+      }
+      uWrap.appendChild(card);
+    });
+  }
+  function flashInsufficient(card){
+    card.style.borderColor = "var(--red)";
+    setTimeout(function(){ card.style.borderColor = ""; }, 400);
+  }
+
+  // ================= INIT =================
+  applyTheme();
+  applyTitle();
+  renderWallet();
+  renderStartScreen();
+})();
+</script>
+</body>
+</html>
